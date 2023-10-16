@@ -209,24 +209,28 @@ void twai_task(void *pvParameters)
 #endif
 
 			ElsterPacketReceive packet = ElsterRawToReceivePacket((uint16_t)rx_msg.identifier, (uint8_t)rx_msg.data_length_code, rx_msg.data);
-			if (packet.receiver == 0x680)
+			for (uint8_t i = 0; i < sizeof(cyclicReadPackets)/sizeof(cyclicReadPackets[0]); ++i)
 			{
-				switch(packet.packetType)
+				if (packet.receiver == 0x680)
+				// if (packet.index == cyclicReadPackets[i].index)
 				{
-					case ELSTER_PT_RESPONSE:
+					switch(packet.packetType)
 					{
-						strncpy(mqttBuf.topic, "wp/read/", 9);
-						strncpy(&mqttBuf.topic[8], packet.indexName, sizeof(mqttBuf.topic) - 8);
-						mqttBuf.data_len = strnlen(packet.value, sizeof(packet.value));
-						strncpy(mqttBuf.data, packet.value, sizeof(mqttBuf.data));
-						if (xQueueSend(xQueue_mqtt_tx, &mqttBuf, portMAX_DELAY) != pdPASS) {
-							ESP_LOGE(TAG, "xQueueSend Fail");
+						case ELSTER_PT_RESPONSE:
+						{
+							strncpy(mqttBuf.topic, "wp/read/", 9);
+							strncpy(&mqttBuf.topic[8], packet.indexName, sizeof(mqttBuf.topic) - 8);
+							mqttBuf.data_len = strnlen(packet.value, sizeof(packet.value));
+							strncpy(mqttBuf.data, packet.value, sizeof(mqttBuf.data));
+							if (xQueueSend(xQueue_mqtt_tx, &mqttBuf, portMAX_DELAY) != pdPASS) {
+								ESP_LOGE(TAG, "xQueueSend Fail");
+							}
+							break;
 						}
-						break;
-					}
-					default:
-					{
-						break;
+						default:
+						{
+							break;
+						}
 					}
 				}
 			}
