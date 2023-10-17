@@ -3732,11 +3732,11 @@ static const ErrorIndex ErrorList[] =
 static const ErrorIndex BetriebsartList[] =
 {
   { 0x0000, "Notbetrieb" },
-  { 0x0100, "Bereitschaft" }, 
-  { 0x0200, "Automatik" },
-  { 0x0300, "Tagbetrieb" },
-  { 0x0400, "Absenkbetrieb" },
-  { 0x0500, "Warmwasser" }
+  { 0x0100, "Bereitschaftsbetrieb" }, 
+  { 0x0200, "Programmbetrieb" },
+  { 0x0300, "Komfortbetrieb" },
+  { 0x0400, "ECO-Betrieb" },
+  { 0x0500, "Warmwasserbetrieb" }
 };
 
 

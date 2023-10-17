@@ -15,6 +15,7 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
+#include "freertos/timers.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "driver/twai.h" // Update from V4.2
@@ -76,7 +77,9 @@ extern int16_t npublish;
 	// send_2_can(0x680, 7, raw);
 	// send_2_can(0x680, 7, (uint8_t[]){0xc1, 0x01, 0xfa, 0x4e, 0xe0, 0x00, 0x00}); // funktioniert
 
+uint8_t cyclicReadPacketPos = 0u;
 ElsterPacketSend cyclicReadPackets[] = {
+	{ 0x480, ELSTER_PT_READ, 0x0112}, // PROGRAMMSCHALTER
 	{ 0x180, ELSTER_PT_READ, 0x4f07}, // KUEHLEN_AKTIVIERT
 	{ 0x180, ELSTER_PT_READ, 0x000e}, // SPEICHERISTTEMP
 	{ 0x500, ELSTER_PT_READ, 0x01d6}, // WPVORLAUFIST
@@ -87,6 +90,8 @@ ElsterPacketSend cyclicReadPackets[] = {
 	{ 0x601, ELSTER_PT_READ, 0x4ec8}, // RAUM_IST_FEUCHTE
 	{ 0x601, ELSTER_PT_READ, 0x4ee0}, // RAUM_TAUPUNKT_TEMPERATUR
 };
+
+TimerHandle_t timerHndTwaiRequests;
 
 void dump_table(TOPIC_t *topics, int16_t ntopic);
 
@@ -113,6 +118,17 @@ void send_2_can(uint32_t canid, int16_t data_len, uint8_t const * const data)
 	}
 }
 
+void vTimerCallbackTwaiExpired( TimerHandle_t xTimer )
+{
+	uint8_t raw[7] = { 0u };
+	ElsterPrepareSendPacket(7, raw, cyclicReadPackets[cyclicReadPacketPos]);
+	send_2_can(0x680, 7, raw);
+
+	cyclicReadPacketPos++;
+	if (cyclicReadPacketPos >= sizeof(cyclicReadPackets)/sizeof(cyclicReadPackets[0]))
+		cyclicReadPacketPos = 0u;
+}
+
 void twai_task(void *pvParameters)
 {
 	ESP_LOGI(TAG,"task start");
@@ -123,51 +139,21 @@ void twai_task(void *pvParameters)
 	MQTT_t mqttBuf;
 	mqttBuf.topic_type = PUBLISH;
 
-	uint8_t raw[7] = { 0 };
-	ElsterPrepareSendPacket(7, raw, cyclicReadPackets[0]);
-	send_2_can(0x680, 7, raw);
-	ElsterPrepareSendPacket(7, raw, cyclicReadPackets[1]);
-	send_2_can(0x680, 7, raw);
-	ElsterPrepareSendPacket(7, raw, cyclicReadPackets[2]);
-	send_2_can(0x680, 7, raw);
+	timerHndTwaiRequests = xTimerCreate(
+      "twaiTimer", /* name */
+      pdMS_TO_TICKS(60000), /* period/time */
+      pdTRUE, /* auto reload */
+      (void*)0, /* timer ID */
+      vTimerCallbackTwaiExpired); /* callback */
+	xTimerStart(timerHndTwaiRequests, pdMS_TO_TICKS(3000));
+
 	// KUEHLEN_AKTIVIERT
 	// ElsterPreparePacketGet(7, raw, 0x180, 0x4f07);
 	// send_2_can(0x680, 7, raw);
 	//send_2_can(0x680, 7, (uint8_t[]){0x31, 0x00, 0xfa, 0x4f, 0x07, 0x00, 0x00}); // funktioniert
 	// KUEHLEN_AKTIVIERT set
 	// send_2_can(0x680, 7, (uint8_t[]){0x30, 0x00, 0xfa, 0x4f, 0x07, 0x00, 0x01}); // funktioniert
-	// SPEICHERISTTEMP // Warmwasserspeicher
-	// ElsterPreparePacketGet(7, raw, 0x180, 0x000e);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0x31, 0x00, 0xfa, 0x00, 0x0e, 0x00, 0x00}); // funktioniert
-	// WPVORLAUFIST
-	// ElsterPreparePacketGet(7, raw, 0x500, 0x01d6);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xa1, 0x00, 0xfa, 0x01, 0xd6, 0x00, 0x00}); // funktioniert
-	// RUECKLAUFISTTEMP
-	// ElsterPreparePacketGet(7, raw, 0x500, 0x0016);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xa1, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00}); // funktioniert
-	// AUSSENTEMP
-	// ElsterPreparePacketGet(7, raw, 0x500, 0x000c);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xa1, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00}); // funktioniert
-	// RAUM_IST_TEMPERATUR
-	// ElsterPreparePacketGet(7, raw, 0x601, 0x4ec7);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xc1, 0x01, 0xfa, 0x4e, 0xc7, 0x00, 0x00}); // funktioniert
-	// RAUM_SOLL_TEMPERATUR
-	// ElsterPreparePacketGet(7, raw, 0x601, 0x4ece);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xc1, 0x01, 0xfa, 0x4e, 0xce, 0x00, 0x00}); // funktioniert
-	// RAUM_IST_FEUCHTE
-	// ElsterPreparePacketGet(7, raw, 0x601, 0x4ec8);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xc1, 0x01, 0xfa, 0x4e, 0xc8, 0x00, 0x00}); // funktioniert
-	// RAUM_TAUPUNKT_TEMPERATUR
-	// ElsterPreparePacketGet(7, raw, 0x601, 0x4ee0);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xc1, 0x01, 0xfa, 0x4e, 0xe0, 0x00, 0x00}); // funktioniert
+	
 	// Set Notbetrieb
 	// send_2_can(0x680, 7, (uint8_t[]){0x90, 0x00, 0xfa, 0x01, 0x12, 0x00, 0x00}); // funktioniert
 	// Set Automatikbetrieb / Programmbetrieb

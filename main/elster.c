@@ -327,7 +327,7 @@ ElsterPacketReceive ElsterRawToReceivePacket(uint16_t sender, uint8_t length, ui
   ElsterPacketReceive p;
   if (length != 7)
   {
-    ESP_LOGI(TAG,"ParseElster failed: invalid length");
+    ESP_LOGE(TAG,"ParseElster failed: invalid length");
     p.packetType = ELSTER_PT_invalid;
     return p;
   }
@@ -338,7 +338,7 @@ ElsterPacketReceive ElsterRawToReceivePacket(uint16_t sender, uint8_t length, ui
   p.index = getElsterIndex(length, data);
   uint16_t rawValue = getElsterRawValue(length, data);
 
-  for (uint16_t tableIndex = 0; tableIndex < High(ElsterTable); tableIndex++)
+  for (uint16_t tableIndex = 0; tableIndex <= High(ElsterTable); tableIndex++)
   {
       if (ElsterTable[tableIndex].Index == p.index)
       {
