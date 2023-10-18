@@ -20,6 +20,7 @@
 #define KElsterTable_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum
 {
@@ -95,11 +96,13 @@ void SetValueType(char * Val, uint8_t Type, uint16_t Value);
 void SetDoubleType(char * Val, unsigned char Type, double Value);
 // bool FormElsterTable(const KCanFrame & Frame, char * str);
 const char * ElsterTypeToName(ElsterValueType Type);
-// int TranslateString(const char * & str, unsigned char elster_type);
+uint16_t TranslateString(const char * str, uint8_t elster_type);
 
 ElsterPacketReceive ElsterRawToReceivePacket(uint16_t sender, uint8_t length, uint8_t const * const data);
 
 void ElsterPrepareSendPacket(uint8_t length, uint8_t * const data, ElsterPacketSend packet);
+void ElsterSetValueDefault(uint8_t length, uint8_t * const data, uint16_t value);
+void ElsterSetValueBool(uint8_t length, uint8_t * const data, bool value);
 
 #endif
 

@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
@@ -21,6 +22,7 @@
 #include "mqtt_client.h"
 #include "driver/twai.h"
 
+#include "elster.h"
 #include "mqtt.h"
 
 static const char *TAG = "SUB";
@@ -111,7 +113,6 @@ void mqtt_sub_task(void *pvParameters)
 #else
 	ESP_LOGI(TAG, "Start Subscribe Broker:%s", CONFIG_MQTT_BROKER);
 #endif
-	dump_table(subscribe, nsubscribe);
 
 	/* Create Eventgroup */
 	s_mqtt_event_group = xEventGroupCreate();
@@ -192,11 +193,9 @@ void mqtt_sub_task(void *pvParameters)
 	esp_mqtt_client_start(mqtt_client);
 	xEventGroupWaitBits(s_mqtt_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
 	ESP_LOGI(TAG, "Connect to MQTT Server");
-	
-	for(int index=0;index<nsubscribe;index++) {
-		ESP_LOGI(TAG, "subscribe[%d] topic=[%s]", index, subscribe[index].topic);
-		esp_mqtt_client_subscribe(mqtt_client, subscribe[index].topic, 0);
-	}
+
+	esp_mqtt_client_subscribe(mqtt_client, "/wp/write/KUEHLEN_AKTIVIERT", 0);
+	esp_mqtt_client_subscribe(mqtt_client, "/wp/write/PROGRAMMSCHALTER", 0);
 
 	twai_message_t tx_msg;
 	MQTT_t mqttBuf;
@@ -205,27 +204,49 @@ void mqtt_sub_task(void *pvParameters)
 		ESP_LOGI(TAG, "type=%d", mqttBuf.topic_type);
 
 		if (mqttBuf.topic_type != SUBSCRIBE) continue;
-		//ESP_LOGI(TAG, "TOPIC=%.*s\r", mqttBuf.topic_len, mqttBuf.topic);
 		ESP_LOGI(TAG, "TOPIC=[%s]", mqttBuf.topic);
 		for(int i=0;i<mqttBuf.data_len;i++) {
 			ESP_LOGI(TAG, "DATA=0x%x", mqttBuf.data[i]);
 		}
 
-		for(int index=0;index<nsubscribe;index++) {
-			if (strcmp(subscribe[index].topic, mqttBuf.topic) != 0) continue;
-			ESP_LOGI(TAG, "subscribe[index].frame=%d", subscribe[index].frame);
-			tx_msg.extd = subscribe[index].frame;
-			tx_msg.ss = 1;
-			tx_msg.self = 0;
-			tx_msg.dlc_non_comp = 0;
-			tx_msg.identifier = subscribe[index].canid;
-			tx_msg.data_length_code = mqttBuf.data_len;
-			if (mqttBuf.data_len > 8) {
-				ESP_LOGW(TAG, "Data length is reduced to 8 bytes");
-				tx_msg.data_length_code = 8;
+		tx_msg.extd = 0;
+		tx_msg.ss = 1;
+		tx_msg.self = 0;
+		tx_msg.dlc_non_comp = 0;
+		tx_msg.identifier = 0x680;
+		tx_msg.data_length_code = 7;
+		
+		uint8_t raw[7] = { 0u };
+		bool forward = false;
+
+		if (strcmp(mqttBuf.topic, "/wp/write/PROGRAMMSCHALTER") == 0)
+		{
+			ESP_LOGI(TAG, "match programm");
+
+			uint16_t value = TranslateString(mqttBuf.data, et_betriebsart);
+			if (value != 0xffff)
+			{
+				ElsterPacketSend p = { 0x480, ELSTER_PT_WRITE, 0x0112}; // PROGRAMMSCHALTER
+				ElsterPrepareSendPacket(7, raw, p);
+				ElsterSetValueDefault(7, raw, value);
+				forward = true;
 			}
+		}
+		else if (strcmp(mqttBuf.topic, "/wp/write/KUEHLEN_AKTIVIERT") == 0)
+		{
+			ESP_LOGI(TAG, "match kuehlen");
+			ElsterPacketSend p = { 0x180, ELSTER_PT_WRITE, 0x4f07}; // KUEHLEN_AKTIVIERT
+			ElsterPrepareSendPacket(7, raw, p);
+			ElsterSetValueBool(7, raw, mqttBuf.data[0] == '1');
+			
+			forward = true;
+		}
+
+		if (forward)
+		{
+			ESP_LOGI(TAG, "forwarding topic '%s'", mqttBuf.topic);
 			for (int i=0;i<tx_msg.data_length_code;i++) {
-				tx_msg.data[i] = mqttBuf.data[i];
+				tx_msg.data[i] = raw[i];
 			}
 			if (xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY) != pdPASS) {
 				ESP_LOGE(pcTaskGetName(0), "xQueueSend Fail");

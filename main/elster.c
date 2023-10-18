@@ -23,7 +23,7 @@
 #include "elster.h"
 #include "elsterTable.inc"
 
-static const char *TAG = "TWAI";
+static const char *TAG = "ELSTER";
 
 #define High(A)     (sizeof(A)/sizeof(A[0]) - 1)
 
@@ -360,8 +360,36 @@ void ElsterPrepareSendPacket(uint8_t length, uint8_t * const data, ElsterPacketS
 
   memset(data, 0, length);
   setElsterReceiver(length, data, packet.receiver);
-  setElsterPacketType(length, data, ELSTER_PT_READ);
+  setElsterPacketType(length, data, packet.packetType);
   setElsterIndex(length, data, packet.index);
+}
+
+void ElsterSetValueDefault(uint8_t length, uint8_t * const data, uint16_t value)
+{
+  if (length != 7 || data == NULL)
+    return;
+
+  if (data[2] == 0xfa)
+  {
+    data[5] = (uint8_t)((value >> 8u) & 0xff);
+    data[6] = (uint8_t) value & 0xff;
+  }
+  else
+  {
+    data[3] = (uint8_t)((value >> 8u) & 0xff);
+    data[4] = (uint8_t) value & 0xff;
+  }
+}
+
+void ElsterSetValueBool(uint8_t length, uint8_t * const data, bool value)
+{
+  if (length != 7 || data == NULL)
+    return;
+
+  if (data[2] == 0xfa)
+    data[6] = (uint8_t) value;
+  else
+    data[4] = (uint8_t) value;
 }
 
 // static bool Get_Time(const char * & str, int & hour, int & min)
@@ -389,152 +417,150 @@ void ElsterPrepareSendPacket(uint8_t length, uint8_t * const data, ElsterPacketS
 //   return false;
 // }
 
-// int TranslateString(const char * & str, unsigned char elster_type)
-// {
-//   while (*str == ' ')
-//     str++;
+uint16_t TranslateString(const char * str, uint8_t elster_type)
+{
+  while (*str == ' ')
+    str++;
     
-//   switch (elster_type)
-//   {
-//     case et_default:
-//     case et_byte:
-//     case et_little_endian:
-//     {
-//       TInt64 i;
+  switch (elster_type)
+  {
+    // case et_default:
+    // case et_byte:
+    // case et_little_endian:
+    // {
+    //   int32_t i;
 
-//       if (!NUtils::GetInt(str, i))
-//         break;
+    //   if (!NUtils::GetInt(str, i))
+    //     break;
 
-//       if (-0x7fff <= i && i <= 0xffff)
-//       {
-//         unsigned short s = (unsigned short) i;
-//         if (elster_type == et_byte && s > 0xff)
-//           break;
-//         if (elster_type == et_little_endian)
-//           s = (unsigned short)((s << 8) + (s >> 8));
+    //   if (-0x7fff <= i && i <= 0xffff)
+    //   {
+    //     uint16_t s = (uint16_t) i;
+    //     if (elster_type == et_byte && s > 0xff)
+    //       break;
+    //     if (elster_type == et_little_endian)
+    //       s = (uint16_t)((s << 8) + (s >> 8));
 
-//         return s;
-//       }
-//       break;
-//     }
-//     case et_little_bool:
-//     case et_bool:
-//     {
-//       int res = 0;
-//       if (!strncmp(str, "on", 2))
-//       {
-//         str += 2;
-//         res = 1;
-//       } else
-//       if (!strncmp(str, "off", 3))
-//       {
-//         str += 3;
-//       } else
-//         break;
+    //     return s;
+    //   }
+    //   break;
+    // }
+    case et_little_bool:
+    case et_bool:
+    {
+      uint16_t res = 0;
+      if (!strncmp(str, "on", 2))
+      {
+        str += 2;
+        res = 1;
+      } else
+      if (!strncmp(str, "off", 3))
+      {
+        str += 3;
+      } else
+        break;
       
-//       if (elster_type == et_little_bool)
-//         res <<= 8;
+      if (elster_type == et_little_bool)
+        res <<= 8;
       
-//       return res;
-//     }
-//     case et_betriebsart:
-//     {
-//       int s = High(BetriebsartList);
-//       for ( ; s >= 0; s--)
-//         if (!strncmp(BetriebsartList[s].Name, str, strlen(BetriebsartList[s].Name)))
-//           break;
-      
-//       if (s >= 0)
-//       {
-//         str += strlen(BetriebsartList[s].Name);
-        
-//         return BetriebsartList[s].Index;
-//       }
-//       break;
-//     }
-//     case et_dec_val:  // Auflösung: xx.x / auch neg. Werte sind möglich
-//     case et_cent_val: // x.xx
-//     case et_mil_val:  // x.xxx
-//     {
-//       double d;
+      return res;
+    }
+    case et_betriebsart:
+    {
+      uint16_t s = 0u;
+      for ( ; s <= High(BetriebsartList); s++)
+      {
+        if (!strncmp(BetriebsartList[s].Name, str, strlen(BetriebsartList[s].Name)))
+        {
+          str += strlen(BetriebsartList[s].Name);
+          return BetriebsartList[s].Index;
+        }
+      }
+      break;
+    }
+    // case et_dec_val:  // Auflösung: xx.x / auch neg. Werte sind möglich
+    // case et_cent_val: // x.xx
+    // case et_mil_val:  // x.xxx
+    // {
+    //   double d;
 
-//       if (!NUtils::GetDouble(str, d))
-//         break;
+    //   if (!NUtils::GetDouble(str, d))
+    //     break;
 
-//       d *= 10.0;
-//       if (elster_type == et_cent_val)
-//         d *= 10.0;
-//       if (elster_type == et_mil_val)
-//         d *= 100.0;
-//       if (-0x7fff <= d && d <= 0x7fff)
-//         return (unsigned short) (int) d;
-//       break;
-//     }  
-//     case et_zeit:
-//     {
-//       int hour, min;
+    //   d *= 10.0;
+    //   if (elster_type == et_cent_val)
+    //     d *= 10.0;
+    //   if (elster_type == et_mil_val)
+    //     d *= 100.0;
+    //   if (-0x7fff <= d && d <= 0x7fff)
+    //     return (uint16_t) (int) d;
+    //   break;
+    // }  
+    // case et_zeit:
+    // {
+    //   uint16_t hour, min;
 
-//       if (!Get_Time(str, hour, min))
-//         break;
+    //   if (!Get_Time(str, hour, min))
+    //     break;
 
-//       if (hour < 24)
-//         return (unsigned short)((min << 8) + hour);
-//       break;
-//     }
-//     case et_datum:
-//     {
-//       TInt64 d, m;
+    //   if (hour < 24)
+    //     return (uint16_t)((min << 8) + hour);
+    //   break;
+    // }
+    // case et_datum:
+    // {
+    //   int32_t d, m;
 
-//       if (!NUtils::GetInt(str, d))
-//         break;
-//       if (*str != '.')
-//         break;
-//       str++;
-//       if (!NUtils::GetInt(str, m))
-//         break;
-//       if (*str != '.')
-//         break;
-//       str++;
-//       if (1 <= d && d <= 31 && 1 <= m && m <= 12)
-//       {
-//         if (m == 2 && d >= 29)
-//           break;
-//         if ((m == 4 || m == 6 || m == 9 || m == 11) && d > 30)
-//           break;
+    //   if (!NUtils::GetInt(str, d))
+    //     break;
+    //   if (*str != '.')
+    //     break;
+    //   str++;
+    //   if (!NUtils::GetInt(str, m))
+    //     break;
+    //   if (*str != '.')
+    //     break;
+    //   str++;
+    //   if (1 <= d && d <= 31 && 1 <= m && m <= 12)
+    //   {
+    //     if (m == 2 && d >= 29)
+    //       break;
+    //     if ((m == 4 || m == 6 || m == 9 || m == 11) && d > 30)
+    //       break;
 
-//         return (unsigned short)((d << 8) + m);
-//       }
-//       break;
-//     }
-//     case et_time_domain:
-//     {
-//       if (!*str)
-//         return 0x8080; // not used time domain
+    //     return (unsigned short)((d << 8) + m);
+    //   }
+    //   break;
+    // }
+    // case et_time_domain:
+    // {
+    //   if (!*str)
+    //     return 0x8080; // not used time domain
 
-//       int hour1, hour2, min1, min2;
+    //   int hour1, hour2, min1, min2;
 
-//       if (!Get_Time(str, hour1, min1))
-//         break;
-//       if (*str != '-')
-//         break;
-//       str++;
-//       if (!Get_Time(str, hour2, min2))
-//         break;
+    //   if (!Get_Time(str, hour1, min1))
+    //     break;
+    //   if (*str != '-')
+    //     break;
+    //   str++;
+    //   if (!Get_Time(str, hour2, min2))
+    //     break;
 
-//       hour1 = 4*hour1 + min1/15;
-//       hour2 = 4*hour2 + min2/15;
-//       if (hour1 < hour2)
-//         return (unsigned short)((hour1 << 8) + hour2);
-//       break;
-//     }
-//     case et_dev_nr:
-//     case et_err_nr:
-//     case et_dev_id:
-//     case et_double_val:
-//     case et_triple_val:
-//     default:
-//       break;
-//   }
-//   return -1;
-// }
+    //   hour1 = 4*hour1 + min1/15;
+    //   hour2 = 4*hour2 + min2/15;
+    //   if (hour1 < hour2)
+    //     return (unsigned short)((hour1 << 8) + hour2);
+    //   break;
+    // }
+    case et_dev_nr:
+    case et_err_nr:
+    case et_dev_id:
+    case et_double_val:
+    case et_triple_val:
+    default:
+      break;
+  }
+  return 0xffff;
+}
 
