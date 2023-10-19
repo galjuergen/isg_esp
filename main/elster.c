@@ -424,32 +424,32 @@ uint16_t TranslateString(const char * str, uint8_t elster_type)
     
   switch (elster_type)
   {
-    // case et_default:
-    // case et_byte:
-    // case et_little_endian:
-    // {
-    //   int32_t i;
+    case et_default:
+    case et_byte:
+    case et_little_endian:
+    {
+      int32_t i;
+      char *ptr;
 
-    //   if (!NUtils::GetInt(str, i))
-    //     break;
+      i = strtol(str, &ptr, 10);
 
-    //   if (-0x7fff <= i && i <= 0xffff)
-    //   {
-    //     uint16_t s = (uint16_t) i;
-    //     if (elster_type == et_byte && s > 0xff)
-    //       break;
-    //     if (elster_type == et_little_endian)
-    //       s = (uint16_t)((s << 8) + (s >> 8));
+      if (-0x7fff <= i && i <= 0xffff)
+      {
+        uint16_t s = (uint16_t) i;
+        if (elster_type == et_byte && s > 0xff)
+          break;
+        if (elster_type == et_little_endian)
+          s = (uint16_t)((s << 8) + (s >> 8));
 
-    //     return s;
-    //   }
-    //   break;
-    // }
+        return s;
+      }
+      break;
+    }
     case et_little_bool:
     case et_bool:
     {
       uint16_t res = 0;
-      if (!strncmp(str, "on", 2))
+      if (!strncmp(str, "on", 2) || !strncmp(str, "1", 1))
       {
         str += 2;
         res = 1;
@@ -457,6 +457,10 @@ uint16_t TranslateString(const char * str, uint8_t elster_type)
       if (!strncmp(str, "off", 3))
       {
         str += 3;
+      } else
+      if (!strncmp(str, "0", 1))
+      {
+        str += 1;
       } else
         break;
       

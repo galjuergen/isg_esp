@@ -141,7 +141,7 @@ void twai_task(void *pvParameters)
 
 	timerHndTwaiRequests = xTimerCreate(
       "twaiTimer", /* name */
-      pdMS_TO_TICKS(60000), /* period/time */
+      pdMS_TO_TICKS(6000), /* period/time */
       pdTRUE, /* auto reload */
       (void*)0, /* timer ID */
       vTimerCallbackTwaiExpired); /* callback */

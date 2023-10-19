@@ -194,8 +194,8 @@ void mqtt_sub_task(void *pvParameters)
 	xEventGroupWaitBits(s_mqtt_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
 	ESP_LOGI(TAG, "Connect to MQTT Server");
 
-	esp_mqtt_client_subscribe(mqtt_client, "/wp/write/KUEHLEN_AKTIVIERT", 0);
-	esp_mqtt_client_subscribe(mqtt_client, "/wp/write/PROGRAMMSCHALTER", 0);
+	esp_mqtt_client_subscribe(mqtt_client, "wp/write/KUEHLEN_AKTIVIERT", 0);
+	esp_mqtt_client_subscribe(mqtt_client, "wp/write/PROGRAMMSCHALTER", 0);
 
 	twai_message_t tx_msg;
 	MQTT_t mqttBuf;
@@ -219,12 +219,25 @@ void mqtt_sub_task(void *pvParameters)
 		uint8_t raw[7] = { 0u };
 		bool forward = false;
 
-		if (strcmp(mqttBuf.topic, "/wp/write/PROGRAMMSCHALTER") == 0)
+		if (strcmp(mqttBuf.topic, "wp/write/PROGRAMMSCHALTER") == 0)
+		// {
+		// 	ESP_LOGI(TAG, "match programm");
+
+		// 	uint16_t value = TranslateString(mqttBuf.data, et_betriebsart);
+		// 	if (value != 0xffff)
+		// 	{
+		// 		ElsterPacketSend p = { 0x480, ELSTER_PT_WRITE, 0x0112}; // PROGRAMMSCHALTER
+		// 		ElsterPrepareSendPacket(7, raw, p);
+		// 		ElsterSetValueDefault(7, raw, value);
+		// 		forward = true;
+		// 	}
+		// }
+		// else if (strcmp(mqttBuf.topic, "wp/write/PROGRAMM") == 0)
 		{
 			ESP_LOGI(TAG, "match programm");
 
-			uint16_t value = TranslateString(mqttBuf.data, et_betriebsart);
-			if (value != 0xffff)
+			uint16_t value = TranslateString(mqttBuf.data, et_little_endian);
+			if ((value >> 8) <= 5u)
 			{
 				ElsterPacketSend p = { 0x480, ELSTER_PT_WRITE, 0x0112}; // PROGRAMMSCHALTER
 				ElsterPrepareSendPacket(7, raw, p);
@@ -232,7 +245,7 @@ void mqtt_sub_task(void *pvParameters)
 				forward = true;
 			}
 		}
-		else if (strcmp(mqttBuf.topic, "/wp/write/KUEHLEN_AKTIVIERT") == 0)
+		else if (strcmp(mqttBuf.topic, "wp/write/KUEHLEN_AKTIVIERT") == 0)
 		{
 			ESP_LOGI(TAG, "match kuehlen");
 			ElsterPacketSend p = { 0x180, ELSTER_PT_WRITE, 0x4f07}; // KUEHLEN_AKTIVIERT

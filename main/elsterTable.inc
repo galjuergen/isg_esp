@@ -165,7 +165,7 @@ static const ElsterIndex ElsterTable[] =
 //   // Tagbetrieb     0x0300
 //   // Absenkbetrieb  0x0400
 //   // Warmwasser     0x0500
-  { "PROGRAMMSCHALTER"                                 , 0x0112, et_betriebsart},
+  { "PROGRAMMSCHALTER"                                 , 0x0112, et_little_endian}, // et_betriebsart
 //   // GERMAN         0x0000
 //   // ENGISH         0x0100
 //   // FRANZ          0x0200 ...
