@@ -215,55 +215,39 @@ void mqtt_sub_task(void *pvParameters)
 		tx_msg.dlc_non_comp = 0;
 		tx_msg.identifier = 0x680;
 		tx_msg.data_length_code = 7;
-		
-		uint8_t raw[7] = { 0u };
-		bool forward = false;
 
 		if (strcmp(mqttBuf.topic, "wp/write/PROGRAMMSCHALTER") == 0)
-		// {
-		// 	ESP_LOGI(TAG, "match programm");
-
-		// 	uint16_t value = TranslateString(mqttBuf.data, et_betriebsart);
-		// 	if (value != 0xffff)
-		// 	{
-		// 		ElsterPacketSend p = { 0x480, ELSTER_PT_WRITE, 0x0112}; // PROGRAMMSCHALTER
-		// 		ElsterPrepareSendPacket(7, raw, p);
-		// 		ElsterSetValueDefault(7, raw, value);
-		// 		forward = true;
-		// 	}
-		// }
-		// else if (strcmp(mqttBuf.topic, "wp/write/PROGRAMM") == 0)
 		{
 			ESP_LOGI(TAG, "match programm");
-
 			uint16_t value = TranslateString(mqttBuf.data, et_little_endian);
 			if ((value >> 8) <= 5u)
 			{
-				ElsterPacketSend p = { 0x480, ELSTER_PT_WRITE, 0x0112}; // PROGRAMMSCHALTER
-				ElsterPrepareSendPacket(7, raw, p);
-				ElsterSetValueDefault(7, raw, value);
-				forward = true;
+				// set value
+				ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0112}; // PROGRAMMSCHALTER
+				ElsterPrepareSendPacket(7, tx_msg.data, pSet);
+				ElsterSetValueDefault(7, tx_msg.data, value);
+				xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+
+				// get value right after setting
+				ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x0112}; // PROGRAMMSCHALTER
+				ElsterPrepareSendPacket(7, tx_msg.data, pRead);
+				xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
 			}
 		}
 		else if (strcmp(mqttBuf.topic, "wp/write/KUEHLEN_AKTIVIERT") == 0)
 		{
 			ESP_LOGI(TAG, "match kuehlen");
-			ElsterPacketSend p = { 0x180, ELSTER_PT_WRITE, 0x4f07}; // KUEHLEN_AKTIVIERT
-			ElsterPrepareSendPacket(7, raw, p);
-			ElsterSetValueBool(7, raw, mqttBuf.data[0] == '1');
 			
-			forward = true;
-		}
-
-		if (forward)
-		{
-			ESP_LOGI(TAG, "forwarding topic '%s'", mqttBuf.topic);
-			for (int i=0;i<tx_msg.data_length_code;i++) {
-				tx_msg.data[i] = raw[i];
-			}
-			if (xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY) != pdPASS) {
-				ESP_LOGE(pcTaskGetName(0), "xQueueSend Fail");
-			}
+			// set value
+			ElsterPacketSend pSet = { 0x180, ELSTER_PT_WRITE, 0x4f07}; // KUEHLEN_AKTIVIERT
+			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
+			ElsterSetValueBool(7, tx_msg.data, mqttBuf.data[0] == '1');
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+		
+			// get value right after setting
+			ElsterPacketSend pRead = { 0x180, ELSTER_PT_READ, 0x4f07}; // KUEHLEN_AKTIVIERT
+			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
 		}
 
 	} // end while
