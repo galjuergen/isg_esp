@@ -479,14 +479,17 @@ void app_main()
 	}
 	ESP_ERROR_CHECK(ret);
 
+#if CONFIG_CONNECTION_TYPE_ETH
+	// initialize ethernet (DHCP)
 	eth_init_sta();
 	ESP_LOGI(TAG, "--- eth init done ---");
-
-	// // WiFi initialize
-	// if (wifi_init_sta() == false) {
-	// 	while(1) vTaskDelay(10);
-	// }
-	// ESP_LOGI(TAG, "--- wifi init done ---");
+#elif CONFIG_CONNECTION_TYPE_WIFI
+	// initialize wifi
+	if (wifi_init_sta() == false) {
+		while(1) vTaskDelay(10);
+	}
+	ESP_LOGI(TAG, "--- wifi init done ---");
+#endif
 
 	// Initialize mDNS
 	ESP_ERROR_CHECK( mdns_init() );

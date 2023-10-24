@@ -139,11 +139,11 @@ static esp_eth_handle_t eth_init_internal(eth_device *dev_out)
     esp32_emac_config.smi_mdc_gpio_num = CONFIG_ETHERNET_MDC_GPIO;
     esp32_emac_config.smi_mdio_gpio_num = CONFIG_ETHERNET_MDIO_GPIO;
 
-    // jg
+    // custom start
     esp32_emac_config.interface = EMAC_DATA_INTERFACE_RMII;                      // alter EMAC Data Interface
     esp32_emac_config.clock_config.rmii.clock_mode = EMAC_CLK_OUT;               // select EMAC REF_CLK mode
-    esp32_emac_config.clock_config.rmii.clock_gpio = 17;          // select GPIO number used to input/output EMAC REF_CLK
-    /// jg
+    esp32_emac_config.clock_config.rmii.clock_gpio = CONFIG_ETHERNET_EMAC_CLK_OUT_GPIO;          // select GPIO number used to input/output EMAC REF_CLK
+    /// custom end
 
 #if CONFIG_ETHERNET_SPI_SUPPORT
     // The DMA is shared resource between EMAC and the SPI. Therefore, adjust

@@ -19,6 +19,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "driver/twai.h" // Update from V4.2
+#include "sdkconfig.h"
 
 #include "elster.h"
 #include "mqtt.h"
@@ -145,7 +146,7 @@ void twai_task(void *pvParameters)
 
 	timerHndTwaiRequests = xTimerCreate(
       "twaiTimer", /* name */
-      pdMS_TO_TICKS(6000), /* period/time */
+      pdMS_TO_TICKS(CONFIG_WPM_REQUEST_PERIOD * 1000), /* period/time */
       pdTRUE, /* auto reload */
       (void*)0, /* timer ID */
       vTimerCallbackTwaiExpired); /* callback */

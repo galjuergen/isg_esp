@@ -86,6 +86,13 @@ menu "Ethernet Configuration"
             default 1
             help
                 Set PHY address according your board schematic.
+
+        config ETHERNET_EMAC_CLK_OUT_GPIO
+            int "EMAC Clock Out GPIO number"
+            range -1 31
+            default 0
+            help
+                Set EMAC Clock out GPIO number according your board schematic.
     endif # ETHERNET_INTERNAL_SUPPORT
 
     config ETHERNET_SPI_SUPPORT

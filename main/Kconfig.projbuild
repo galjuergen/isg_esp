@@ -83,7 +83,22 @@ menu "Application Configuration"
 
 	endmenu
 
-	menu "WiFi Setting"
+	menu "Network Setting"
+
+		choice CONNECTION_TYPE
+			prompt "Connection type"
+			default CONNECTION_TYPE_ETH
+			help
+				Select the CAN bitrate for the example.
+			config CONNECTION_TYPE_ETH
+				bool "Ethernet"
+				help
+					Connect via Ethernet.
+			config CONNECTION_TYPE_WIFI
+				bool "Wifi"
+				help
+					Connect via Wifi.
+		endchoice
 
 		config ESP_WIFI_SSID
 			string "WiFi SSID"
@@ -146,6 +161,17 @@ menu "Application Configuration"
 			default "password"
 			help
 				Username used for connecting to the broker.
+
+	endmenu
+
+	menu "WPM Settings"
+
+		config WPM_REQUEST_PERIOD
+			int "Period in seconds for requesting data from WPM"
+			range 0 3600
+			default 5
+			help
+				After the given time the next value will be requested via TWAI (CAN)
 
 	endmenu
 
