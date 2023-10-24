@@ -1,5 +1,6 @@
 ## IDF Component Manager Manifest File
 dependencies:
+  espressif/ethernet_init: "*"
   espressif/mdns:
     version: "^1.0.3"
     rules:
