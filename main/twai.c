@@ -29,55 +29,6 @@ static const char *TAG = "TWAI";
 extern QueueHandle_t xQueue_mqtt_tx;
 extern QueueHandle_t xQueue_twai_tx;
 
-extern TOPIC_t *publish;
-extern int16_t npublish;
-
-	// KUEHLEN_AKTIVIERT set
-	// send_2_can(0x680, 7, (uint8_t[]){0x30, 0x00, 0xfa, 0x4f, 0x07, 0x00, 0x01}); // funktioniert
-	// Set Notbetrieb
-	// send_2_can(0x680, 7, (uint8_t[]){0x90, 0x00, 0xfa, 0x01, 0x12, 0x00, 0x00}); // funktioniert
-	// Set Automatikbetrieb / Programmbetrieb
-	// send_2_can(0x680, 7, (uint8_t[]){0x90, 0x00, 0xfa, 0x01, 0x12, 0x02, 0x00}); // funktioniert
-	// Set Warmwasserbetrieb
-	// send_2_can(0x680, 7, (uint8_t[]){0x90, 0x00, 0xfa, 0x01, 0x12, 0x05, 0x00}); // funktioniert
-
-	// KUEHLEN_AKTIVIERT
-	// ElsterPreparePacketGet(7, raw, 0x180, 0x4f07);
-	// send_2_can(0x680, 7, raw);
-	//send_2_can(0x680, 7, (uint8_t[]){0x31, 0x00, 0xfa, 0x4f, 0x07, 0x00, 0x00}); // funktioniert
-	// SPEICHERISTTEMP // Warmwasserspeicher
-	// ElsterPreparePacketGet(7, raw, 0x180, 0x000e);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0x31, 0x00, 0xfa, 0x00, 0x0e, 0x00, 0x00}); // funktioniert
-	// WPVORLAUFIST
-	// ElsterPreparePacketGet(7, raw, 0x500, 0x01d6);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xa1, 0x00, 0xfa, 0x01, 0xd6, 0x00, 0x00}); // funktioniert
-	// RUECKLAUFISTTEMP
-	// ElsterPreparePacketGet(7, raw, 0x500, 0x0016);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xa1, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00}); // funktioniert
-	// AUSSENTEMP
-	// ElsterPreparePacketGet(7, raw, 0x500, 0x000c);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xa1, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00}); // funktioniert
-	// RAUM_IST_TEMPERATUR
-	// ElsterPreparePacketGet(7, raw, 0x601, 0x4ec7);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xc1, 0x01, 0xfa, 0x4e, 0xc7, 0x00, 0x00}); // funktioniert
-	// RAUM_SOLL_TEMPERATUR
-	// ElsterPreparePacketGet(7, raw, 0x601, 0x4ece);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xc1, 0x01, 0xfa, 0x4e, 0xce, 0x00, 0x00}); // funktioniert
-	// RAUM_IST_FEUCHTE
-	// ElsterPreparePacketGet(7, raw, 0x601, 0x4ec8);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xc1, 0x01, 0xfa, 0x4e, 0xc8, 0x00, 0x00}); // funktioniert
-	// RAUM_TAUPUNKT_TEMPERATUR
-	// ElsterPreparePacketGet(7, raw, 0x601, 0x4ee0);
-	// send_2_can(0x680, 7, raw);
-	// send_2_can(0x680, 7, (uint8_t[]){0xc1, 0x01, 0xfa, 0x4e, 0xe0, 0x00, 0x00}); // funktioniert
-
 uint8_t cyclicReadPacketPos = 0u;
 ElsterPacketSend cyclicReadPackets[] = {
 	{ 0x480, ELSTER_PT_READ, 0x0112}, // PROGRAMMSCHALTER
@@ -97,8 +48,6 @@ ElsterPacketSend cyclicReadPackets[] = {
 };
 
 TimerHandle_t timerHndTwaiRequests;
-
-void dump_table(TOPIC_t *topics, int16_t ntopic);
 
 void send_2_can(uint32_t canid, int16_t data_len, uint8_t const * const data)
 {
@@ -137,7 +86,6 @@ void vTimerCallbackTwaiExpired( TimerHandle_t xTimer )
 void twai_task(void *pvParameters)
 {
 	ESP_LOGI(TAG,"task start");
-	dump_table(publish, npublish);
 
 	twai_message_t rx_msg;
 	twai_message_t tx_msg;
@@ -152,22 +100,7 @@ void twai_task(void *pvParameters)
       vTimerCallbackTwaiExpired); /* callback */
 	xTimerStart(timerHndTwaiRequests, pdMS_TO_TICKS(3000));
 
-	// KUEHLEN_AKTIVIERT
-	// ElsterPreparePacketGet(7, raw, 0x180, 0x4f07);
-	// send_2_can(0x680, 7, raw);
-	//send_2_can(0x680, 7, (uint8_t[]){0x31, 0x00, 0xfa, 0x4f, 0x07, 0x00, 0x00}); // funktioniert
-	// KUEHLEN_AKTIVIERT set
-	// send_2_can(0x680, 7, (uint8_t[]){0x30, 0x00, 0xfa, 0x4f, 0x07, 0x00, 0x01}); // funktioniert
-	
-	// Set Notbetrieb
-	// send_2_can(0x680, 7, (uint8_t[]){0x90, 0x00, 0xfa, 0x01, 0x12, 0x00, 0x00}); // funktioniert
-	// Set Automatikbetrieb / Programmbetrieb
-	// send_2_can(0x680, 7, (uint8_t[]){0x90, 0x00, 0xfa, 0x01, 0x12, 0x02, 0x00}); // funktioniert
-	// Set Warmwasserbetrieb
-	// send_2_can(0x680, 7, (uint8_t[]){0x90, 0x00, 0xfa, 0x01, 0x12, 0x05, 0x00}); // funktioniert
-
 	while (1) {
-		//esp_err_t ret = twai_receive(&rx_msg, pdMS_TO_TICKS(1));
 		esp_err_t ret = twai_receive(&rx_msg, pdMS_TO_TICKS(10));
 		if (ret == ESP_OK) {
 			ESP_LOGD(TAG,"twai_receive identifier=0x%"PRIx32" flags=0x%"PRIx32" data_length_code=%d",
@@ -200,58 +133,27 @@ void twai_task(void *pvParameters)
 #endif
 
 			ElsterPacketReceive packet = ElsterRawToReceivePacket((uint16_t)rx_msg.identifier, (uint8_t)rx_msg.data_length_code, rx_msg.data);
-			for (uint8_t i = 0; i < sizeof(cyclicReadPackets)/sizeof(cyclicReadPackets[0]); ++i)
+			if (packet.receiver == 0x680)
 			{
-				if (packet.receiver == 0x680)
-				// if (packet.index == cyclicReadPackets[i].index)
+				switch(packet.packetType)
 				{
-					switch(packet.packetType)
+					case ELSTER_PT_RESPONSE:
 					{
-						case ELSTER_PT_RESPONSE:
-						{
-							strncpy(mqttBuf.topic, "wp/read/", 9);
-							strncpy(&mqttBuf.topic[8], packet.indexName, sizeof(mqttBuf.topic) - 8);
-							mqttBuf.data_len = strnlen(packet.value, sizeof(packet.value));
-							strncpy(mqttBuf.data, packet.value, sizeof(mqttBuf.data));
-							if (xQueueSend(xQueue_mqtt_tx, &mqttBuf, portMAX_DELAY) != pdPASS) {
-								ESP_LOGE(TAG, "xQueueSend Fail");
-							}
-							break;
+						strncpy(mqttBuf.topic, "wp/read/", 9);
+						strncpy(&mqttBuf.topic[8], packet.indexName, sizeof(mqttBuf.topic) - 8);
+						mqttBuf.data_len = strnlen(packet.value, sizeof(packet.value));
+						strncpy(mqttBuf.data, packet.value, sizeof(mqttBuf.data));
+						if (xQueueSend(xQueue_mqtt_tx, &mqttBuf, portMAX_DELAY) != pdPASS) {
+							ESP_LOGE(TAG, "xQueueSend Fail");
 						}
-						default:
-						{
-							break;
-						}
+						break;
+					}
+					default:
+					{
+						break;
 					}
 				}
 			}
-
-			// for(int index=0;index<npublish;index++) {
-			// 	if (publish[index].frame != ext) continue;
-			// 	if (publish[index].canid == rx_msg.identifier) {
-			// 		ESP_LOGI(TAG, "publish[%d] frame=%d canid=0x%"PRIx32" topic=[%s] topic_len=%d",
-			// 		index, publish[index].frame, publish[index].canid, publish[index].topic, publish[index].topic_len);
-			// 		mqttBuf.topic_len = publish[index].topic_len;
-			// 		for(int i=0;i<mqttBuf.topic_len;i++) {
-			// 			mqttBuf.topic[i] = publish[index].topic[i];
-			// 			mqttBuf.topic[i+1] = 0;
-			// 		}
-			// 		if (rtr == 0) {
-			// 			mqttBuf.data_len = rx_msg.data_length_code;
-			// 		} else {
-			// 			mqttBuf.data_len = 0;
-			// 		}
-			// 		memset(mqttBuf.data, 0, sizeof(mqttBuf.data));
-			// 		for(int i=0;i<mqttBuf.data_len;i++) {
-			// 			mqttBuf.data[i] = rx_msg.data[i];
-			// 			ESP_LOGI(TAG, "mqttBuf.data[i]=0x%x", mqttBuf.data[i]);
-			// 		}
-			// 		if (xQueueSend(xQueue_mqtt_tx, &mqttBuf, portMAX_DELAY) != pdPASS) {
-			// 			ESP_LOGE(TAG, "xQueueSend Fail");
-			// 		}
-			// 	}
-			// }
-
 		} else if (ret == ESP_ERR_TIMEOUT) {
 			if (xQueueReceive(xQueue_twai_tx, &tx_msg, 0) == pdTRUE) {
 				ESP_LOGI(TAG, "tx_msg.identifier=[0x%"PRIx32"] tx_msg.extd=%d", tx_msg.identifier, tx_msg.extd);

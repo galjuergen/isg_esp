@@ -37,11 +37,6 @@ extern const uint8_t root_cert_pem_end[] asm("_binary_root_cert_pem_end");
 extern QueueHandle_t xQueue_mqtt_tx;
 extern QueueHandle_t xQueue_twai_tx;
 
-extern TOPIC_t *subscribe;
-extern int16_t nsubscribe;
-
-void dump_table(TOPIC_t *topics, int16_t ntopic);
-
 static QueueHandle_t xQueueSubscribe;
 
 
@@ -196,6 +191,7 @@ void mqtt_sub_task(void *pvParameters)
 
 	esp_mqtt_client_subscribe(mqtt_client, "wp/write/KUEHLEN_AKTIVIERT", 0);
 	esp_mqtt_client_subscribe(mqtt_client, "wp/write/PROGRAMMSCHALTER", 0);
+	esp_mqtt_client_subscribe(mqtt_client, "wp/write/RELAIS/1", 0);
 
 	twai_message_t tx_msg;
 	MQTT_t mqttBuf;
@@ -248,6 +244,10 @@ void mqtt_sub_task(void *pvParameters)
 			ElsterPacketSend pRead = { 0x180, ELSTER_PT_READ, 0x4f07}; // KUEHLEN_AKTIVIERT
 			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
 			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+		}
+		else if (strcmp(mqttBuf.topic, "wp/write/RELAIS/1") == 0)
+		{
+			// TODO: set relais
 		}
 
 	} // end while

@@ -22,11 +22,9 @@
 #include "esp_eth.h"
 #include "ethernet_init.h"
 #include "esp_event.h"
-#include "esp_vfs.h"
 #include "nvs_flash.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include "esp_spiffs.h" 
 #include "driver/twai.h" // Update from V4.2
 #include "mdns.h"
 
@@ -78,11 +76,6 @@ static int s_retry_num = 0;
 
 QueueHandle_t xQueue_mqtt_tx;
 QueueHandle_t xQueue_twai_tx;
-
-TOPIC_t *publish;
-int16_t	npublish;
-TOPIC_t *subscribe;
-int16_t	nsubscribe;
 
 static void event_handler(void* arg, esp_event_base_t event_base,
 								int32_t event_id, void* event_data)
@@ -259,50 +252,6 @@ bool wifi_init_sta(void)
 	ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
 	ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
 	vEventGroupDelete(s_wifi_event_group);
-	return ret;
-}
-
-esp_err_t mountSPIFFS(char * partition_label, char * base_path) {
-	ESP_LOGI(TAG, "Initializing SPIFFS file system");
-
-	esp_vfs_spiffs_conf_t conf = {
-		.base_path = base_path,
-		.partition_label = partition_label,
-		.max_files = 5,
-		.format_if_mount_failed = true
-	};
-
-	// Use settings defined above to initialize and mount SPIFFS filesystem.
-	// Note: esp_vfs_spiffs_register is an all-in-one convenience function.
-	esp_err_t ret = esp_vfs_spiffs_register(&conf);
-
-	if (ret != ESP_OK) {
-		if (ret == ESP_FAIL) {
-			ESP_LOGE(TAG, "Failed to mount or format filesystem");
-		} else if (ret == ESP_ERR_NOT_FOUND) {
-			ESP_LOGE(TAG, "Failed to find SPIFFS partition");
-		} else {
-			ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
-		}
-		return ret;
-	}
-
-	size_t total = 0, used = 0;
-	ret = esp_spiffs_info(partition_label, &total, &used);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
-	} else {
-		ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
-		DIR* dir = opendir(base_path);
-		assert(dir != NULL);
-		while (true) {
-			struct dirent*pe = readdir(dir);
-			if (!pe) break;
-			ESP_LOGI(TAG, "d_name=%s d_ino=%d d_type=%x", pe->d_name,pe->d_ino, pe->d_type);
-		}
-		closedir(dir);
-	}
-	ESP_LOGI(TAG, "Mount SPIFFS filesystem");
 	return ret;
 }
 
@@ -506,36 +455,11 @@ void app_main()
 	ESP_ERROR_CHECK(twai_start());
 	ESP_LOGI(TAG, "Driver started");
 
-	// Mount SPIFFS
-	char *partition_label = "storage";
-	char *base_path = "/spiffs"; 
-	ret = mountSPIFFS(partition_label, base_path);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "mountSPIFFS fail");
-		while(1) { vTaskDelay(1); }
-	}
-
 	// Create Queue
 	xQueue_mqtt_tx = xQueueCreate( 10, sizeof(MQTT_t) );
 	configASSERT( xQueue_mqtt_tx );
 	xQueue_twai_tx = xQueueCreate( 10, sizeof(twai_message_t) );
 	configASSERT( xQueue_twai_tx );
-
-	// build publish table
-	ret = build_table(&publish, "/spiffs/can2mqtt.csv", &npublish);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "build publish table fail");
-		while(1) { vTaskDelay(1); }
-	}
-	dump_table(publish, npublish);
-
-	// build subscribe table
-	ret = build_table(&subscribe, "/spiffs/mqtt2can.csv", &nsubscribe);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "build subscribe table fail");
-		while(1) { vTaskDelay(1); }
-	}
-	dump_table(subscribe, nsubscribe);
 
 	xTaskCreate(mqtt_pub_task, "mqtt_pub", 1024*4, NULL, 2, NULL);
 	xTaskCreate(mqtt_sub_task, "mqtt_sub", 1024*4, NULL, 2, NULL);
