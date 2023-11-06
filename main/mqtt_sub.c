@@ -25,7 +25,25 @@
 #include "elster.h"
 #include "mqtt.h"
 
+typedef struct
+{
+  char * topic;
+  uint16_t receiver;
+  uint16_t index;
+  ElsterValueType valueType;
+} MqttTopic;
+
 static const char *TAG = "SUB";
+
+static const MqttTopic s_subscribedTopics[] = {
+	{ "wp/write/KUEHLEN_AKTIVIERT",  0x180, 0x4f07, et_bool },
+	{ "wp/write/PROGRAMMSCHALTER",   0x480, 0x0112, et_little_endian },
+	{ "wp/write/DATUM",              0x180, 0x000a, et_datum },
+	{ "wp/write/TAG",                0x480, 0x0122, et_little_endian },
+	{ "wp/write/MONAT",              0x480, 0x0123, et_little_endian },
+	{ "wp/write/JAHR",               0x480, 0x0124, et_little_endian },
+	{ "wp/write/UHRZEIT",            0x480, 0x0009, et_zeit }
+};
 
 static EventGroupHandle_t s_mqtt_event_group;
 
@@ -189,13 +207,10 @@ void mqtt_sub_task(void *pvParameters)
 	xEventGroupWaitBits(s_mqtt_event_group, MQTT_CONNECTED_BIT, false, true, portMAX_DELAY);
 	ESP_LOGI(TAG, "Connect to MQTT Server");
 
-	esp_mqtt_client_subscribe(mqtt_client, "wp/write/KUEHLEN_AKTIVIERT", 0);
-	esp_mqtt_client_subscribe(mqtt_client, "wp/write/PROGRAMMSCHALTER", 0);
-	esp_mqtt_client_subscribe(mqtt_client, "wp/write/DATUM", 0);
-	esp_mqtt_client_subscribe(mqtt_client, "wp/write/TAG", 0);
-	esp_mqtt_client_subscribe(mqtt_client, "wp/write/MONAT", 0);
-	esp_mqtt_client_subscribe(mqtt_client, "wp/write/JAHR", 0);
-	esp_mqtt_client_subscribe(mqtt_client, "wp/write/UHRZEIT", 0);
+	for (uint32_t i = 0; i < sizeof(s_subscribedTopics) / sizeof(s_subscribedTopics[0]); i++)
+	{
+		esp_mqtt_client_subscribe(mqtt_client, s_subscribedTopics[i].topic, 0);
+	}
 
 	twai_message_t tx_msg;
 	MQTT_t mqttBuf;
@@ -216,6 +231,32 @@ void mqtt_sub_task(void *pvParameters)
 		tx_msg.identifier = 0x680;
 		tx_msg.data_length_code = 7;
 
+		for (uint32_t i = 0; i < sizeof(s_subscribedTopics) / sizeof(s_subscribedTopics[0]); i++)
+		{
+			MqttTopic topic = s_subscribedTopics[i];
+			if (strcmp(mqttBuf.topic, topic.topic) == 0)
+			{
+				ESP_LOGI(TAG, "match");
+				uint32_t value = TranslateString(mqttBuf.data, topic.valueType);
+				
+				ESP_LOGI(TAG, "value: %x, rcv: %x, idx: %x", (unsigned int)value, (unsigned int)topic.receiver, (unsigned int)topic.index);
+
+				// set value
+				ElsterPacketSend pSet = { topic.receiver, ELSTER_PT_WRITE, topic.index};
+				ElsterPrepareSendPacket(7, tx_msg.data, pSet);
+				ElsterSetValueDefault(7, tx_msg.data, value);
+				xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+
+				// get value right after setting
+				ElsterPacketSend pRead = { topic.receiver, ELSTER_PT_READ, topic.index};
+				ElsterPrepareSendPacket(7, tx_msg.data, pRead);
+				xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+
+				break;
+			}
+		}
+
+/*
 		if (strcmp(mqttBuf.topic, "wp/write/PROGRAMMSCHALTER") == 0)
 		{
 			ESP_LOGI(TAG, "match programm");
@@ -234,103 +275,7 @@ void mqtt_sub_task(void *pvParameters)
 				xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
 			}
 		}
-		else if (strcmp(mqttBuf.topic, "wp/write/KUEHLEN_AKTIVIERT") == 0)
-		{
-			ESP_LOGI(TAG, "match kuehlen");
-			uint32_t value = TranslateString(mqttBuf.data, et_bool);
-			
-			// set value
-			ElsterPacketSend pSet = { 0x180, ELSTER_PT_WRITE, 0x4f07}; // KUEHLEN_AKTIVIERT
-			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
-			ElsterSetValueDefault(7, tx_msg.data, value);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-		
-			// get value right after setting
-			ElsterPacketSend pRead = { 0x180, ELSTER_PT_READ, 0x4f07}; // KUEHLEN_AKTIVIERT
-			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-		}
-		else if (strcmp(mqttBuf.topic, "wp/write/DATUM") == 0)
-		{
-			ESP_LOGI(TAG, "match datum");
-			uint32_t value = TranslateString(mqttBuf.data, et_datum);
-			
-			// set value
-			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x000a}; // DATUM
-			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
-			ElsterSetValueDefault(7, tx_msg.data, value);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-
-			// get value right after setting
-			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x000a}; // DATUM
-			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-		}
-		else if (strcmp(mqttBuf.topic, "wp/write/TAG") == 0)
-		{
-			ESP_LOGI(TAG, "match tag");
-			uint32_t value = TranslateString(mqttBuf.data, et_little_endian);
-			
-			// set value
-			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0122}; // TAG
-			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
-			ElsterSetValueDefault(7, tx_msg.data, value);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-
-			// get value right after setting
-			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x0122}; // TAG
-			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-		}
-		else if (strcmp(mqttBuf.topic, "wp/write/MONAT") == 0)
-		{
-			ESP_LOGI(TAG, "match tag");
-			uint32_t value = TranslateString(mqttBuf.data, et_little_endian);
-			
-			// set value
-			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0123}; // MONAT
-			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
-			ElsterSetValueDefault(7, tx_msg.data, value);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-
-			// get value right after setting
-			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x0122}; // TAG
-			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-		}
-		else if (strcmp(mqttBuf.topic, "wp/write/JAHR") == 0)
-		{
-			ESP_LOGI(TAG, "match tag");
-			uint32_t value = TranslateString(mqttBuf.data, et_little_endian);
-			
-			// set value
-			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0124}; // JAHR
-			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
-			ElsterSetValueDefault(7, tx_msg.data, value);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-
-			// get value right after setting
-			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x0124}; // JAHR
-			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-		}
-		else if (strcmp(mqttBuf.topic, "wp/write/UHRZEIT") == 0)
-		{
-			ESP_LOGI(TAG, "match uhrzeit");
-			uint32_t value = TranslateString(mqttBuf.data, et_zeit);
-			
-			// set value
-			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0009}; // UHRZEIT
-			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
-			ElsterSetValueDefault(7, tx_msg.data, value);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-
-			// get value right after setting
-			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x0009}; // UHRZEIT
-			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
-			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
-		}
-
+*/
 	} // end while
 
 	// Never reach here
