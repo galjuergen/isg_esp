@@ -219,7 +219,7 @@ void mqtt_sub_task(void *pvParameters)
 		if (strcmp(mqttBuf.topic, "wp/write/PROGRAMMSCHALTER") == 0)
 		{
 			ESP_LOGI(TAG, "match programm");
-			uint16_t value = TranslateString(mqttBuf.data, et_little_endian);
+			uint32_t value = TranslateString(mqttBuf.data, et_little_endian);
 			if ((value >> 8) <= 5u)
 			{
 				// set value
@@ -237,11 +237,12 @@ void mqtt_sub_task(void *pvParameters)
 		else if (strcmp(mqttBuf.topic, "wp/write/KUEHLEN_AKTIVIERT") == 0)
 		{
 			ESP_LOGI(TAG, "match kuehlen");
+			uint32_t value = TranslateString(mqttBuf.data, et_bool);
 			
 			// set value
 			ElsterPacketSend pSet = { 0x180, ELSTER_PT_WRITE, 0x4f07}; // KUEHLEN_AKTIVIERT
 			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
-			ElsterSetValueBool(7, tx_msg.data, mqttBuf.data[0] == '1');
+			ElsterSetValueDefault(7, tx_msg.data, value);
 			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
 		
 			// get value right after setting
@@ -252,7 +253,7 @@ void mqtt_sub_task(void *pvParameters)
 		else if (strcmp(mqttBuf.topic, "wp/write/DATUM") == 0)
 		{
 			ESP_LOGI(TAG, "match datum");
-			uint16_t value = TranslateString(mqttBuf.data, et_datum);
+			uint32_t value = TranslateString(mqttBuf.data, et_datum);
 			
 			// set value
 			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x000a}; // DATUM
@@ -268,7 +269,7 @@ void mqtt_sub_task(void *pvParameters)
 		else if (strcmp(mqttBuf.topic, "wp/write/TAG") == 0)
 		{
 			ESP_LOGI(TAG, "match tag");
-			uint16_t value = TranslateString(mqttBuf.data, et_little_endian);
+			uint32_t value = TranslateString(mqttBuf.data, et_little_endian);
 			
 			// set value
 			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0122}; // TAG
@@ -284,7 +285,7 @@ void mqtt_sub_task(void *pvParameters)
 		else if (strcmp(mqttBuf.topic, "wp/write/MONAT") == 0)
 		{
 			ESP_LOGI(TAG, "match tag");
-			uint16_t value = TranslateString(mqttBuf.data, et_little_endian);
+			uint32_t value = TranslateString(mqttBuf.data, et_little_endian);
 			
 			// set value
 			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0123}; // MONAT
@@ -300,7 +301,7 @@ void mqtt_sub_task(void *pvParameters)
 		else if (strcmp(mqttBuf.topic, "wp/write/JAHR") == 0)
 		{
 			ESP_LOGI(TAG, "match tag");
-			uint16_t value = TranslateString(mqttBuf.data, et_little_endian);
+			uint32_t value = TranslateString(mqttBuf.data, et_little_endian);
 			
 			// set value
 			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0124}; // JAHR
@@ -316,7 +317,7 @@ void mqtt_sub_task(void *pvParameters)
 		else if (strcmp(mqttBuf.topic, "wp/write/UHRZEIT") == 0)
 		{
 			ESP_LOGI(TAG, "match uhrzeit");
-			uint16_t value = TranslateString(mqttBuf.data, et_zeit);
+			uint32_t value = TranslateString(mqttBuf.data, et_zeit);
 			
 			// set value
 			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0009}; // UHRZEIT

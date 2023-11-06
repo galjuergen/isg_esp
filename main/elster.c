@@ -366,20 +366,41 @@ void ElsterPrepareSendPacket(uint8_t length, uint8_t * const data, ElsterPacketS
   setElsterIndex(length, data, packet.index);
 }
 
-void ElsterSetValueDefault(uint8_t length, uint8_t * const data, uint16_t value)
+void ElsterSetValueDefault(uint8_t length, uint8_t * const data, uint32_t value)
 {
   if (length != 7 || data == NULL)
     return;
 
   if (data[2] == 0xfa)
   {
+    if (value > 0xffff)
+    {
+      // not possible
+      return;
+    }
     data[5] = (uint8_t)((value >> 8u) & 0xff);
     data[6] = (uint8_t) value & 0xff;
   }
   else
   {
-    data[3] = (uint8_t)((value >> 8u) & 0xff);
-    data[4] = (uint8_t) value & 0xff;
+    if (value > 0xffffff)
+    {
+      data[3] = (uint8_t)((value >> 24u) & 0xff);
+      data[4] = (uint8_t)((value >> 16u) & 0xff);
+      data[5] = (uint8_t)((value >> 8u) & 0xff);
+      data[6] = (uint8_t) value & 0xff;
+    }
+    else if (value > 0xffff)
+    {
+      data[3] = (uint8_t)((value >> 16u) & 0xff);
+      data[4] = (uint8_t)((value >> 8u) & 0xff);
+      data[5] = (uint8_t) value & 0xff;
+    }
+    else
+    {
+      data[3] = (uint8_t)((value >> 8u) & 0xff);
+      data[4] = (uint8_t) value & 0xff;
+    }
   }
 }
 
@@ -420,7 +441,7 @@ static bool Get_Time(const char * str, uint16_t * hour, uint16_t * min)
   return false;
 }
 
-uint16_t TranslateString(const char * str, uint8_t elster_type)
+uint32_t TranslateString(const char * str, uint8_t elster_type)
 {
   while (*str == ' ')
     str++;
@@ -516,7 +537,7 @@ uint16_t TranslateString(const char * str, uint8_t elster_type)
     }
     case et_datum:
     {
-      int32_t d, m;
+      int32_t d, m, y;
       char *ptr;
       d = strtol(str, &ptr, 10);
 
@@ -525,7 +546,12 @@ uint16_t TranslateString(const char * str, uint8_t elster_type)
       ptr++;
       
       m = strtol(ptr, &ptr, 10);
+
+      if (*ptr != '.')
+        break;
+      ptr++;
       
+      y = strtol(ptr, &ptr, 10);      
 
       if (1 <= d && d <= 31 && 1 <= m && m <= 12)
       {
@@ -534,7 +560,7 @@ uint16_t TranslateString(const char * str, uint8_t elster_type)
         if ((m == 4 || m == 6 || m == 9 || m == 11) && d > 30)
           break;
 
-        return (uint16_t)(((d << 8)) | (m & 0xff));
+        return (uint32_t)((((d & 0xff) << 16)) | ((m & 0xff) << 8) | (y & 0xff));
       }
       break;
     }
