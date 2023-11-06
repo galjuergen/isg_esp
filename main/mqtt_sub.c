@@ -191,7 +191,11 @@ void mqtt_sub_task(void *pvParameters)
 
 	esp_mqtt_client_subscribe(mqtt_client, "wp/write/KUEHLEN_AKTIVIERT", 0);
 	esp_mqtt_client_subscribe(mqtt_client, "wp/write/PROGRAMMSCHALTER", 0);
-	esp_mqtt_client_subscribe(mqtt_client, "wp/write/RELAIS/1", 0);
+	esp_mqtt_client_subscribe(mqtt_client, "wp/write/DATUM", 0);
+	esp_mqtt_client_subscribe(mqtt_client, "wp/write/TAG", 0);
+	esp_mqtt_client_subscribe(mqtt_client, "wp/write/MONAT", 0);
+	esp_mqtt_client_subscribe(mqtt_client, "wp/write/JAHR", 0);
+	esp_mqtt_client_subscribe(mqtt_client, "wp/write/UHRZEIT", 0);
 
 	twai_message_t tx_msg;
 	MQTT_t mqttBuf;
@@ -245,9 +249,85 @@ void mqtt_sub_task(void *pvParameters)
 			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
 			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
 		}
-		else if (strcmp(mqttBuf.topic, "wp/write/RELAIS/1") == 0)
+		else if (strcmp(mqttBuf.topic, "wp/write/DATUM") == 0)
 		{
-			// TODO: set relais
+			ESP_LOGI(TAG, "match datum");
+			uint16_t value = TranslateString(mqttBuf.data, et_datum);
+			
+			// set value
+			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x000a}; // DATUM
+			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
+			ElsterSetValueDefault(7, tx_msg.data, value);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+
+			// get value right after setting
+			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x000a}; // DATUM
+			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+		}
+		else if (strcmp(mqttBuf.topic, "wp/write/TAG") == 0)
+		{
+			ESP_LOGI(TAG, "match tag");
+			uint16_t value = TranslateString(mqttBuf.data, et_little_endian);
+			
+			// set value
+			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0122}; // TAG
+			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
+			ElsterSetValueDefault(7, tx_msg.data, value);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+
+			// get value right after setting
+			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x0122}; // TAG
+			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+		}
+		else if (strcmp(mqttBuf.topic, "wp/write/MONAT") == 0)
+		{
+			ESP_LOGI(TAG, "match tag");
+			uint16_t value = TranslateString(mqttBuf.data, et_little_endian);
+			
+			// set value
+			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0123}; // MONAT
+			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
+			ElsterSetValueDefault(7, tx_msg.data, value);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+
+			// get value right after setting
+			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x0122}; // TAG
+			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+		}
+		else if (strcmp(mqttBuf.topic, "wp/write/JAHR") == 0)
+		{
+			ESP_LOGI(TAG, "match tag");
+			uint16_t value = TranslateString(mqttBuf.data, et_little_endian);
+			
+			// set value
+			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0124}; // JAHR
+			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
+			ElsterSetValueDefault(7, tx_msg.data, value);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+
+			// get value right after setting
+			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x0124}; // JAHR
+			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+		}
+		else if (strcmp(mqttBuf.topic, "wp/write/UHRZEIT") == 0)
+		{
+			ESP_LOGI(TAG, "match uhrzeit");
+			uint16_t value = TranslateString(mqttBuf.data, et_zeit);
+			
+			// set value
+			ElsterPacketSend pSet = { 0x480, ELSTER_PT_WRITE, 0x0009}; // UHRZEIT
+			ElsterPrepareSendPacket(7, tx_msg.data, pSet);
+			ElsterSetValueDefault(7, tx_msg.data, value);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
+
+			// get value right after setting
+			ElsterPacketSend pRead = { 0x480, ELSTER_PT_READ, 0x0009}; // UHRZEIT
+			ElsterPrepareSendPacket(7, tx_msg.data, pRead);
+			xQueueSend(xQueue_twai_tx, &tx_msg, portMAX_DELAY);
 		}
 
 	} // end while

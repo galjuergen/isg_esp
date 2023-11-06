@@ -23,8 +23,8 @@ static const ElsterIndex ElsterTable[] =
   // { "RAUMSOLLTEMP_II"                                  , 0x0006, et_dec_val},
   // { "RAUMSOLLTEMP_III"                                 , 0x0007, et_dec_val},
   // { "RAUMSOLLTEMP_NACHT"                               , 0x0008, et_dec_val},
-  // { "UHRZEIT"                                          , 0x0009, et_zeit},
-  // { "DATUM"                                            , 0x000a, et_datum},
+  { "UHRZEIT"                                          , 0x0009, et_zeit},
+  { "DATUM"                                            , 0x000a, et_datum},
   // { "GERAETE_ID"                                       , 0x000b, et_dev_id},
   { "AUSSENTEMP"                                       , 0x000c, et_dec_val},
   // { "SAMMLERISTTEMP"                                   , 0x000d, et_dec_val},  // ev. KESSELISTTEMP
@@ -185,9 +185,9 @@ static const ElsterIndex ElsterTable[] =
 //   { "FERIENENDE_MONAT"                                 , 0x011f, et_little_endian},
 //   { "FERIENENDE_JAHR"                                  , 0x0120, et_little_endian},
 //   { "WOCHENTAG"                                        , 0x0121, et_little_endian},
-//   { "TAG"                                              , 0x0122, et_little_endian},
-//   { "MONAT"                                            , 0x0123, et_little_endian},
-//   { "JAHR"                                             , 0x0124, et_little_endian}, // +2000
+  { "TAG"                                              , 0x0122, et_little_endian},
+  { "MONAT"                                            , 0x0123, et_little_endian},
+  { "JAHR"                                             , 0x0124, et_little_endian}, // +2000
 //   { "STUNDE"                                           , 0x0125, et_little_endian},
 //   { "MINUTE"                                           , 0x0126, et_little_endian},
 //   { "SEKUNDE"                                          , 0x0127, et_little_endian},

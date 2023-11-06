@@ -46,6 +46,8 @@ static const char * ElsterTypeStr[] =
   "et_err_nr"
 };
 
+static bool Get_Time(const char * str, uint16_t * hour, uint16_t * min);
+
 void SetValueType(char * Val, uint8_t Type, uint16_t Value)
 {
    if (Value == 0x8000)
@@ -392,30 +394,31 @@ void ElsterSetValueBool(uint8_t length, uint8_t * const data, bool value)
     data[4] = (uint8_t) value;
 }
 
-// static bool Get_Time(const char * & str, int & hour, int & min)
-// {
-//   TInt64 h, m;
+static bool Get_Time(const char * str, uint16_t * hour, uint16_t * min)
+{
+  int32_t h, m;
+  char * ptr;
 
-//   if (!NUtils::GetInt(str, h))
-//     return false;
-//   if (*str != ':')
-//     return false;
-//   str++;
-//   if (!NUtils::GetInt(str, m))
-//     return false;
+  h = strtol(str, &ptr, 10);
 
-//   if (h == 24 && m)
-//     return false;
+  if (*ptr != ':')
+    return false;
+  ptr++;
+  
+  m = strtol(ptr, &ptr, 10);
+
+  if (h == 24 && m > 0)
+    return false;
     
-//   if (0 <= h && h <= 24 && 0 <= m && m < 60)
-//   {
-//     hour = (int) h;
-//     min = (int) m;
+  if (0 <= h && h <= 24 && 0 <= m && m < 60)
+  {
+    *hour = (uint16_t) h;
+    *min = (uint16_t) m;
 
-//     return true;
-//   }
-//   return false;
-// }
+    return true;
+  }
+  return false;
+}
 
 uint16_t TranslateString(const char * str, uint8_t elster_type)
 {
@@ -500,42 +503,41 @@ uint16_t TranslateString(const char * str, uint8_t elster_type)
     //     return (uint16_t) (int) d;
     //   break;
     // }  
-    // case et_zeit:
-    // {
-    //   uint16_t hour, min;
+    case et_zeit:
+    {
+      uint16_t hour, min;
 
-    //   if (!Get_Time(str, hour, min))
-    //     break;
+      if (!Get_Time(str, &hour, &min))
+        break;
 
-    //   if (hour < 24)
-    //     return (uint16_t)((min << 8) + hour);
-    //   break;
-    // }
-    // case et_datum:
-    // {
-    //   int32_t d, m;
+      if (hour < 24)
+        return (uint16_t)((min << 8) + hour);
+      break;
+    }
+    case et_datum:
+    {
+      int32_t d, m;
+      char *ptr;
+      d = strtol(str, &ptr, 10);
 
-    //   if (!NUtils::GetInt(str, d))
-    //     break;
-    //   if (*str != '.')
-    //     break;
-    //   str++;
-    //   if (!NUtils::GetInt(str, m))
-    //     break;
-    //   if (*str != '.')
-    //     break;
-    //   str++;
-    //   if (1 <= d && d <= 31 && 1 <= m && m <= 12)
-    //   {
-    //     if (m == 2 && d >= 29)
-    //       break;
-    //     if ((m == 4 || m == 6 || m == 9 || m == 11) && d > 30)
-    //       break;
+      if (*ptr != '.')
+        break;
+      ptr++;
+      
+      m = strtol(ptr, &ptr, 10);
+      
 
-    //     return (unsigned short)((d << 8) + m);
-    //   }
-    //   break;
-    // }
+      if (1 <= d && d <= 31 && 1 <= m && m <= 12)
+      {
+        if (m == 2 && d >= 29)
+          break;
+        if ((m == 4 || m == 6 || m == 9 || m == 11) && d > 30)
+          break;
+
+        return (uint16_t)(((d << 8)) | (m & 0xff));
+      }
+      break;
+    }
     // case et_time_domain:
     // {
     //   if (!*str)
