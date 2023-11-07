@@ -1,11 +1,17 @@
 # isg_esp
 A universal isg web based on esp32 which can be used to integrate your Stiebel Eltron heating pump into your smart home system (e.g. Loxone). Tested with WPL 10 AC / WPM 3.
 
+## Acknowledgements
+
+This project is based on:
+* [http://juerg5524.ch/list_data.php]
+* [https://github.com/nopnop2002/esp-idf-can2mqtt]
+
 ## Hardware
 
 Tested with following hardware
 * LILYGO TTGO T-Internet-POE [https://www.lilygo.cc/products/t-internet-poe]
-* SN65HVD230 CAN Transceiver (e.g. Waveshare SN65HVD230)
+* SN65HVD230 CAN Transceiver (e.g. Waveshare SN65HVD230) - Attention: In my case i had to unsolder the onboard termination resistance!
 
 ## Pin Configuration
 
