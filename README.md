@@ -3,7 +3,7 @@ A universal isg web based on esp32 which can be used to integrate your Stiebel E
 
 ## Acknowledgements
 
-This project is based on:
+This project is inspired by:
 * [http://juerg5524.ch/list_data.php]
 * [https://github.com/nopnop2002/esp-idf-can2mqtt]
 
